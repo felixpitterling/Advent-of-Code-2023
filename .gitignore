@@ -1,0 +1,16 @@
+/**/*.bak/
+/**/*.rs.bk
+/**/*.rlib
+/**/*.rmeta
+
+**/Cargo.lock
+
+/**/doc/
+
+**/.DS_Store
+**/.idea/
+**/.vscode/
+
+**/debug/
+**/target/
+*.pdb
