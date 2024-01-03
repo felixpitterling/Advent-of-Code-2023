@@ -1,0 +1,129 @@
+use std::collections::VecDeque;
+use std::collections::HashSet;
+
+const INPUT: &str = include_str!("./../input.txt");
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+enum Tile {
+    Empty,
+    SplitHoriz,
+    SplitVert,
+    MirrorForward,
+    MirrorBack,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+struct Beam {
+    pos: Coord,
+    dir: Direction,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+struct Coord {
+    x: usize,
+    y: usize,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+impl Beam {
+    fn forward(mut self, rows: usize, cols: usize) -> Option<Self> {
+        match self.dir {
+            Direction::Up if self.pos.y > 0 => self.pos.y -= 1,
+            Direction::Down if self.pos.y < rows - 1 => self.pos.y += 1,
+            Direction::Left if self.pos.x > 0 => self.pos.x -= 1,
+            Direction::Right if self.pos.x < cols - 1 => self.pos.x += 1,
+            _ => return None,
+        }
+        Some(self)
+    }
+}
+
+fn main() {
+    let answer = part_1(INPUT);
+    println!("Answer: {}", answer);
+}
+
+pub fn part_1(input: &str) -> usize {
+    let grid = parse(input);
+    let start = Beam {
+        pos: Coord { x: 0, y: 0 },
+        dir: Direction::Right,
+    };
+    energized(start, &grid)
+}
+
+fn parse(s: &str) -> Vec<Vec<Tile>> {
+    s.lines()
+        .map(|line| {
+            line.chars()
+                .map(|c| match c {
+                    '\\' => Tile::MirrorBack,
+                    '/' => Tile::MirrorForward,
+                    '.' => Tile::Empty,
+                    '-' => Tile::SplitHoriz,
+                    '|' => Tile::SplitVert,
+                    _ => panic!("at the disco"),
+                })
+                .collect()
+        })
+        .collect()
+}
+
+fn energized(start: Beam, grid: &[Vec<Tile>]) -> usize {
+    let rows = grid.len();
+    let cols = grid[0].len();
+
+    let mut q = VecDeque::new();
+    let mut energized = HashSet::new();
+    let mut seen = HashSet::new();
+    q.push_back(start);
+
+    while let Some(mut beam) = q.pop_front() {
+        if seen.contains(&beam) {
+            continue;
+        }
+        energized.insert(beam.pos);
+        seen.insert(beam);
+
+        let dirs = match (grid[beam.pos.y][beam.pos.x], beam.dir) {
+            (Tile::Empty, _)
+            | (Tile::SplitHoriz, Direction::Left)
+            | (Tile::SplitHoriz, Direction::Right)
+            | (Tile::SplitVert, Direction::Up)
+            | (Tile::SplitVert, Direction::Down) => vec![beam.dir],
+            (Tile::SplitHoriz, _) => {
+                vec![Direction::Left, Direction::Right]
+            }
+            (Tile::SplitVert, _) => {
+                vec![Direction::Up, Direction::Down]
+            }
+            (Tile::MirrorForward, Direction::Up) | (Tile::MirrorBack, Direction::Down) => {
+                vec![Direction::Right]
+            }
+            (Tile::MirrorForward, Direction::Down) | (Tile::MirrorBack, Direction::Up) => {
+                vec![Direction::Left]
+            }
+            (Tile::MirrorForward, Direction::Left) | (Tile::MirrorBack, Direction::Right) => {
+                vec![Direction::Down]
+            }
+            (Tile::MirrorForward, Direction::Right) | (Tile::MirrorBack, Direction::Left) => {
+                vec![Direction::Up]
+            }
+        };
+
+        for dir in dirs {
+            beam.dir = dir;
+            if let Some(beam) = beam.forward(rows, cols) {
+                q.push_back(beam);
+            }
+        }
+    }
+    energized.len()
+}
